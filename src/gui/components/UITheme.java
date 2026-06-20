@@ -28,13 +28,18 @@ public static final Color ACCENT    = new Color(0xE6, 0x5A, 0x00);  // strong or
     b.setBackground(PRIMARY);
     b.setForeground(Color.WHITE);
     b.setFont(BOLD);
-    b.setOpaque(true);                 // force our background to paint
-    b.setContentAreaFilled(true);
-    b.setBorderPainted(false);
+    // b.setOpaque(true);                 // force our background to paint
+    // b.setContentAreaFilled(true);
+    // b.setBorderPainted(false);
+
+
+    b.setOpaque(true);                    // added
+b.setContentAreaFilled(true);         // added
+b.setBorderPainted(false); 
     b.setFocusPainted(false);
-    b.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(PRIMARY_D, 1),
-            new EmptyBorder(10, 18, 10, 18)));
+b.setBorder(BorderFactory.createCompoundBorder(             // changed from plain EmptyBorder
+        BorderFactory.createLineBorder(PRIMARY_D, 1),
+        new EmptyBorder(10, 18, 10, 18)));
     b.setCursor(new Cursor(Cursor.HAND_CURSOR));
     return b;
 }
@@ -43,13 +48,13 @@ public static JButton flatButton(String text, Color bg) {
     b.setBackground(bg);
     b.setForeground(Color.WHITE);
     b.setFont(BOLD);
-    b.setOpaque(true);                 // force our background to paint
-    b.setContentAreaFilled(true);
-    b.setBorderPainted(false);
-    b.setFocusPainted(false);
-    b.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(bg.darker(), 1),
-            new EmptyBorder(8, 14, 8, 14)));
+b.setOpaque(true);                    // added
+b.setContentAreaFilled(true);         // added
+b.setBorderPainted(false); 
+b.setFocusPainted(false);
+b.setBorder(BorderFactory.createCompoundBorder(             // changed from plain EmptyBorder
+        BorderFactory.createLineBorder(bg.darker(), 1),
+        new EmptyBorder(8, 14, 8, 14)));
     b.setCursor(new Cursor(Cursor.HAND_CURSOR));
     return b;
 }

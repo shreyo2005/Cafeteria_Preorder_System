@@ -50,6 +50,63 @@ public class CafeteriaManager {
         return null;
     }
 
+
+    // ==================== CUSTOMER AUTH (auto-create + check) ====================
+public enum LoginResult { OK, WRONG_PASSWORD }
+
+public static class CustomerLogin {
+    public final LoginResult result;
+    public final Customer customer;
+    CustomerLogin(LoginResult r, Customer c) { this.result = r; this.customer = c; }
+}
+
+public CustomerLogin customerLogin(String username, String password) {
+    try (Connection c = DBConnection.getConnection()) {
+        String find = "SELECT user_id, password, full_name FROM users " +
+                      "WHERE username=? AND role='CUSTOMER'";
+        try (PreparedStatement ps = c.prepareStatement(find)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {                          // existing account -> check password
+                    String stored = rs.getString("password");
+                    if (stored.equals(password)) {
+                        return new CustomerLogin(LoginResult.OK,
+                            new Customer(rs.getInt("user_id"), username, password,
+                                         rs.getString("full_name")));
+                    } else {
+                        return new CustomerLogin(LoginResult.WRONG_PASSWORD, null);
+                    }
+                }
+            }
+        }
+        String ins = "INSERT INTO users(username,password,role,full_name) " + // new account -> create
+                     "VALUES(?,?, 'CUSTOMER', ?)";
+        try (PreparedStatement ps =
+                     c.prepareStatement(ins, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, username);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                keys.next();
+                int newId = keys.getInt(1);
+                return new CustomerLogin(LoginResult.OK,
+                    new Customer(newId, username, password, username));
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return new CustomerLogin(LoginResult.WRONG_PASSWORD, null);
+}
+
+public Person staffLogin(String username, String password) {
+    Person p = login(username, password);
+    if (p != null && (p.getRole().equals("ADMIN") || p.getRole().equals("STAFF")))
+        return p;
+    return null;
+}
+
     // ==================== MENU ====================
     public List<MenuItem> getMenu() {
         List<MenuItem> list = new ArrayList<>();
@@ -157,6 +214,41 @@ public class CafeteriaManager {
     }
 
     public List<Order> getAllOrders() { return loadOrders(null); }
+
+    public int reorder(int customerId, String pickupSlot, int pastOrderId) {
+    Order past = getOrderById(pastOrderId);
+    if (past == null || past.getItems().isEmpty()) return -1;
+    List<OrderItem> items = new ArrayList<>();
+    for (OrderItem oi : past.getItems()) {                 // rebuild items as a fresh order
+        items.add(new OrderItem(0, oi.getItemId(), oi.getItemName(),
+                                oi.getQuantity(), oi.getUnitPrice()));
+    }
+    return placeOrder(customerId, pickupSlot, items);
+}
+
+public Order getLastOrder(int customerId) {
+    List<Order> list = getOrdersForCustomer(customerId);
+    return list.isEmpty() ? null : list.get(0);            // list is newest-first
+}
+
+private Order getOrderById(int orderId) {
+    String sql = "SELECT o.*, u.full_name FROM orders o " +
+                 "JOIN users u ON o.customer_id = u.user_id WHERE o.order_id=?";
+    try (Connection c = DBConnection.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+        ps.setInt(1, orderId);
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                Order o = new Order(rs.getInt("order_id"), rs.getInt("customer_id"),
+                        rs.getString("full_name"), rs.getString("order_time"),
+                        rs.getString("pickup_slot"), rs.getString("status"));
+                loadItems(c, o);
+                return o;
+            }
+        }
+    } catch (SQLException e) { e.printStackTrace(); }
+    return null;
+}
 
     public List<Order> getOrdersForCustomer(int customerId) { return loadOrders(customerId); }
 

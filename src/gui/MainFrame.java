@@ -380,11 +380,57 @@ public class MainFrame extends JFrame {
         };
         load.run();
 
+        // JButton refresh = UITheme.flatButton("Refresh", new Color(0x15,0x65,0xC0));
+        // refresh.addActionListener(e -> load.run());
+        // JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        // bar.setBackground(UITheme.BG);
+        // bar.add(refresh);
+
+
+
         JButton refresh = UITheme.flatButton("Refresh", new Color(0x15,0x65,0xC0));
-        refresh.addActionListener(e -> load.run());
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        bar.setBackground(UITheme.BG);
-        bar.add(refresh);
+refresh.addActionListener(e -> load.run());
+
+JComboBox<String> slot = new JComboBox<>(new String[]{                 // pickup slot for reorders
+        "12:00 PM","12:30 PM","1:00 PM","1:30 PM","5:00 PM","5:30 PM"});
+
+JButton reorderSel = UITheme.primaryButton("Reorder Selected");        // repeat highlighted order
+reorderSel.addActionListener(e -> {
+    int r = table.getSelectedRow();
+    if (r < 0) { JOptionPane.showMessageDialog(this, "Select an order to repeat."); return; }
+    int orderId = (int) model.getValueAt(r, 0);
+    int newId = manager.reorder(user.getId(), (String) slot.getSelectedItem(), orderId);
+    if (newId > 0) {
+        JOptionPane.showMessageDialog(this,
+                "Reordered! New order #" + newId + " for pickup at " + slot.getSelectedItem());
+        load.run();
+    } else {
+        JOptionPane.showMessageDialog(this, "Could not reorder.");
+    }
+});
+
+JButton reorderLast = UITheme.flatButton("Repeat Last Order", UITheme.ACCENT);  // one-tap last order
+reorderLast.addActionListener(e -> {
+    Order last = manager.getLastOrder(user.getId());
+    if (last == null) { JOptionPane.showMessageDialog(this, "You have no previous orders yet."); return; }
+    int newId = manager.reorder(user.getId(), (String) slot.getSelectedItem(), last.getOrderId());
+    if (newId > 0) {
+        JOptionPane.showMessageDialog(this,
+                "Repeated your last order (#" + last.getOrderId() + ").\n" +
+                "New order #" + newId + " for pickup at " + slot.getSelectedItem());
+        load.run();
+    } else {
+        JOptionPane.showMessageDialog(this, "Could not reorder.");
+    }
+});
+
+JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+bar.setBackground(UITheme.BG);
+bar.add(new JLabel("Pickup:"));
+bar.add(slot);
+bar.add(reorderSel);
+bar.add(reorderLast);
+bar.add(refresh);
 
         p.add(new JScrollPane(table), BorderLayout.CENTER);
         p.add(bar, BorderLayout.SOUTH);

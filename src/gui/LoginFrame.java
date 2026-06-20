@@ -50,11 +50,18 @@ public class LoginFrame extends JFrame {
                 BorderFactory.createLineBorder(UITheme.BORDER),
                 new EmptyBorder(6, 10, 6, 10)));
 
+        JComboBox<String> roleBox=new JComboBox<>(new String[]{"CUSTOMER ,STAFF , ADMIN"});
+        roleBox.setMaximumSize(new Dimension(300,40));
+        roleBox.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+
         JButton loginBtn = UITheme.primaryButton("Login");
         loginBtn.setMaximumSize(new Dimension(300, 44));
         loginBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel hint = new JLabel("<html><center>admin/admin123 &nbsp; staff/staff123<br>shreyo/pass123</center></html>");
+        //JLabel hint = new JLabel("<html><center>admin/admin123 &nbsp; staff/staff123<br>shreyo/pass123</center></html>");
+        JLabel hint = new JLabel("<html><center>Staff: admin/admin123 &nbsp; staff/staff123<br>"
+        + "Customers: enter a username &amp; password to sign up,<br>then use the same details to log in next time.</center></html>");
         hint.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         hint.setForeground(UITheme.MUTED);
         hint.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -76,23 +83,52 @@ public class LoginFrame extends JFrame {
         root.add(loginBtn);
         root.add(Box.createVerticalStrut(20));
         root.add(hint);
+        root.add(Box.createVerticalStrut(16));
+root.add(label("Role"));
+root.add(Box.createVerticalStrut(4));
+root.add(roleBox);
 
         add(root);
 
-        Runnable doLogin = () -> {
+        // Runnable doLogin = () -> {
+        //     String u = userField.getText().trim();
+        //     String p = new String(passField.getPassword());
+        //     if (u.isEmpty() || p.isEmpty()) {
+        //         JOptionPane.showMessageDialog(this, "Enter username and password.");
+        //         return;
+        //     }
+
+
+Runnable doLogin = () -> {
             String u = userField.getText().trim();
             String p = new String(passField.getPassword());
             if (u.isEmpty() || p.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Enter username and password.");
                 return;
             }
-            Person person = manager.login(u, p);
-            if (person == null) {
-                JOptionPane.showMessageDialog(this, "Invalid credentials.",
-                        "Login failed", JOptionPane.ERROR_MESSAGE);
-            } else {
+
+            Person staff = manager.staffLogin(u, p);               // 1) admin/staff seeded check
+            if (staff != null) {
                 dispose();
-                new MainFrame(person).setVisible(true);
+                new MainFrame(staff).setVisible(true);
+                return;
+            }
+
+            if (u.equals("admin") || u.equals("staff")) {          // 2) seeded name, wrong password
+                JOptionPane.showMessageDialog(this, "Wrong password for " + u + ".",
+                        "Login failed", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            CafeteriaManager.CustomerLogin cl = manager.customerLogin(u, p);  // 3) customer auto-create / check
+            if (cl.result == CafeteriaManager.LoginResult.OK) {
+                dispose();
+                new MainFrame(cl.customer).setVisible(true);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "That username already exists and the password is incorrect.\n" +
+                        "Try again, or use a different username to create a new account.",
+                        "Login failed", JOptionPane.ERROR_MESSAGE);
             }
         };
         loginBtn.addActionListener(e -> doLogin.run());
