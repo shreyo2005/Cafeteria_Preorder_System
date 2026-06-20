@@ -7,6 +7,8 @@ import models.Person;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.RenderingHints;
+import java.awt.BasicStroke;
 
 public class LoginFrame extends JFrame {
 
@@ -24,8 +26,7 @@ public class LoginFrame extends JFrame {
         root.setBackground(UITheme.BG);
         root.setBorder(new EmptyBorder(40, 40, 40, 40));
 
-        JLabel logo = new JLabel("\uD83C\uDF7D\uFE0F", SwingConstants.CENTER);
-        logo.setFont(new Font("Segoe UI", Font.PLAIN, 60));
+        JComponent logo = new DiningLogo();
         logo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel title = new JLabel("Cafeteria Preorder");
@@ -138,5 +139,58 @@ public class LoginFrame extends JFrame {
         l.setAlignmentX(Component.CENTER_ALIGNMENT);
         l.setMaximumSize(new Dimension(300, 20));
         return l;
+    }
+
+    /** A crisp, self-drawn dining logo: plate with fork and knife in a colored circle. */
+    private static class DiningLogo extends JComponent {
+        DiningLogo() {
+            setPreferredSize(new Dimension(96, 96));
+            setMaximumSize(new Dimension(96, 96));
+            setAlignmentX(Component.CENTER_ALIGNMENT);
+        }
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+            int d = Math.min(w, h) - 6;
+            int x = (w - d) / 2, y = (h - d) / 2;
+
+            // green circle background
+            g2.setColor(UITheme.PRIMARY);
+            g2.fillOval(x, y, d, d);
+
+            // white plate
+            g2.setColor(Color.WHITE);
+            int pd = (int) (d * 0.46);
+            int pcx = x + d / 2, pcy = y + d / 2;
+            g2.fillOval(pcx - pd / 2, pcy - pd / 2, pd, pd);
+
+            // plate inner ring
+            g2.setColor(UITheme.PRIMARY);
+            g2.setStroke(new BasicStroke(2f));
+            int id = (int) (pd * 0.62);
+            g2.drawOval(pcx - id / 2, pcy - id / 2, id, id);
+
+            // fork (left) and knife (right) in white
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            int top = y + (int) (d * 0.22);
+            int bot = y + (int) (d * 0.78);
+            int forkX = x + (int) (d * 0.28);
+            // fork handle
+            g2.drawLine(forkX, top + (int) (d * 0.18), forkX, bot);
+            // fork tines
+            g2.drawLine(forkX - 5, top, forkX - 5, top + (int) (d * 0.18));
+            g2.drawLine(forkX,     top, forkX,     top + (int) (d * 0.18));
+            g2.drawLine(forkX + 5, top, forkX + 5, top + (int) (d * 0.18));
+            // knife (right)
+            int knifeX = x + (int) (d * 0.72);
+            g2.drawLine(knifeX, top, knifeX, bot);
+            g2.setStroke(new BasicStroke(6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawLine(knifeX, top, knifeX, top + (int) (d * 0.22));
+
+            g2.dispose();
+        }
     }
 }
