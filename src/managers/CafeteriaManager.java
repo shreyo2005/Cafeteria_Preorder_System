@@ -245,6 +245,8 @@ private Order getOrderById(int orderId) {
                 Order o = new Order(rs.getInt("order_id"), rs.getInt("customer_id"),
                         rs.getString("full_name"), rs.getString("order_time"),
                         rs.getString("pickup_slot"), rs.getString("status"));
+                        o.setPaymentStatus(rs.getString("payment_status"));
+o.setPaymentMethod(rs.getString("payment_method"));
                 loadItems(c, o);
                 return o;
             }
@@ -273,6 +275,8 @@ private Order getOrderById(int orderId) {
                             rs.getString("order_time"),
                             rs.getString("pickup_slot"),
                             rs.getString("status"));
+                            o.setPaymentStatus(rs.getString("payment_status"));
+o.setPaymentMethod(rs.getString("payment_method"));
                     loadItems(c, o);
                     orders.add(o);
                 }
@@ -308,6 +312,17 @@ private Order getOrderById(int orderId) {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) { e.printStackTrace(); return false; }
     }
+
+    /** Marks an order PAID with the chosen method (UPI / Card / Cash). */
+public boolean payOrder(int orderId, String method) {
+    String sql = "UPDATE orders SET payment_status='PAID', payment_method=? WHERE order_id=?";
+    try (Connection c = DBConnection.getConnection();
+         PreparedStatement ps = c.prepareStatement(sql)) {
+        ps.setString(1, method);
+        ps.setInt(2, orderId);
+        return ps.executeUpdate() > 0;
+    } catch (SQLException e) { e.printStackTrace(); return false; }
+}
 
     // ==================== DASHBOARD STATS ====================
     public int countRow(String table) {

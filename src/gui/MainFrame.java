@@ -106,7 +106,6 @@ public class MainFrame extends JFrame {
     }
 
     private int customerCount() {
-        // small derived stat
         int total = manager.countRow("users");
         return total; // includes staff/admin; fine for a demo overview
     }
@@ -271,9 +270,19 @@ public class MainFrame extends JFrame {
             }
             int orderId = manager.placeOrder(user.getId(), (String) slot.getSelectedItem(), items);
             if (orderId > 0) {
-                JOptionPane.showMessageDialog(this,
-                        "Order #" + orderId + " placed!\nPickup at " + slot.getSelectedItem());
+                double total = 0;
+                for (OrderItem oi : items) total += oi.getSubtotal();
                 cart.clear(); refreshCart.run();
+                int choice = JOptionPane.showConfirmDialog(this,
+                        "Order #" + orderId + " placed! Pickup at " + slot.getSelectedItem() +
+                        "\nTotal: Rs." + total + "\n\nPay online now?",
+                        "Order placed", JOptionPane.YES_NO_OPTION);
+                if (choice == JOptionPane.YES_OPTION) {
+                    payNow(orderId, total);
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "You can pay later from the My Orders tab, or pay cash at the counter.");
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Could not place order.");
             }
@@ -324,7 +333,7 @@ public class MainFrame extends JFrame {
         p.setBackground(UITheme.BG);
         p.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        String[] cols = {"Order #", "Customer", "Items", "Pickup", "Status", "Total"};
+        String[] cols = {"Order #", "Customer", "Items", "Pickup", "Status", "Total", "Payment"};
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -338,15 +347,27 @@ public class MainFrame extends JFrame {
         String[] next = {"PENDING","PREPARING","READY","COMPLETED","CANCELLED"};
         JComboBox<String> statusBox = new JComboBox<>(next);
         JButton update = UITheme.primaryButton("Update Status");
+        JButton cashPaid = UITheme.flatButton("Mark Cash Paid", new Color(0x00,0x89,0x7B));
         JButton refresh = UITheme.flatButton("Refresh", new Color(0x15,0x65,0xC0));
         actions.add(new JLabel("Set status:")); actions.add(statusBox);
-        actions.add(update); actions.add(refresh);
+        actions.add(update); actions.add(cashPaid); actions.add(refresh);
 
         update.addActionListener(e -> {
             int r = table.getSelectedRow();
             if (r < 0) return;
             int id = (int) model.getValueAt(r, 0);
             manager.updateOrderStatus(id, (String) statusBox.getSelectedItem());
+            loadOrdersIntoTable(model, manager.getAllOrders());
+        });
+        cashPaid.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r < 0) { JOptionPane.showMessageDialog(this, "Select an order."); return; }
+            int id = (int) model.getValueAt(r, 0);
+            if (((String) model.getValueAt(r, 6)).startsWith("PAID")) {
+                JOptionPane.showMessageDialog(this, "This order is already paid.");
+                return;
+            }
+            manager.payOrder(id, "Cash");
             loadOrdersIntoTable(model, manager.getAllOrders());
         });
         refresh.addActionListener(e -> loadOrdersIntoTable(model, manager.getAllOrders()));
@@ -362,7 +383,7 @@ public class MainFrame extends JFrame {
         p.setBackground(UITheme.BG);
         p.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        String[] cols = {"Order #", "Items", "Pickup", "Status", "Total"};
+        String[] cols = {"Order #", "Items", "Pickup", "Status", "Total", "Payment"};
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -373,64 +394,74 @@ public class MainFrame extends JFrame {
         Runnable load = () -> {
             model.setRowCount(0);
             for (Order o : manager.getOrdersForCustomer(user.getId())) {
+                String pay = o.getPaymentStatus().equals("PAID")
+                        ? "PAID (" + o.getPaymentMethod() + ")" : "UNPAID";
                 model.addRow(new Object[]{
                         o.getOrderId(), itemsSummary(o), o.getPickupSlot(),
-                        o.getStatus(), "Rs." + o.getTotal()});
+                        o.getStatus(), "Rs." + o.getTotal(), pay});
             }
         };
         load.run();
 
-        // JButton refresh = UITheme.flatButton("Refresh", new Color(0x15,0x65,0xC0));
-        // refresh.addActionListener(e -> load.run());
-        // JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        // bar.setBackground(UITheme.BG);
-        // bar.add(refresh);
-
-
-
         JButton refresh = UITheme.flatButton("Refresh", new Color(0x15,0x65,0xC0));
-refresh.addActionListener(e -> load.run());
+        refresh.addActionListener(e -> load.run());
 
-JComboBox<String> slot = new JComboBox<>(new String[]{                 // pickup slot for reorders
-        "12:00 PM","12:30 PM","1:00 PM","1:30 PM","5:00 PM","5:30 PM"});
+        JButton payBtn = UITheme.flatButton("Pay Now", new Color(0x00,0x89,0x7B));
+        payBtn.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r < 0) { JOptionPane.showMessageDialog(this, "Select an order to pay for."); return; }
+            int orderId = (int) model.getValueAt(r, 0);
+            String payCell = (String) model.getValueAt(r, 5);
+            if (payCell.startsWith("PAID")) {
+                JOptionPane.showMessageDialog(this, "This order is already paid.");
+                return;
+            }
+            String totalStr = ((String) model.getValueAt(r, 4)).replace("Rs.", "");
+            double amount = Double.parseDouble(totalStr);
+            if (payNow(orderId, amount)) load.run();
+        });
 
-JButton reorderSel = UITheme.primaryButton("Reorder Selected");        // repeat highlighted order
-reorderSel.addActionListener(e -> {
-    int r = table.getSelectedRow();
-    if (r < 0) { JOptionPane.showMessageDialog(this, "Select an order to repeat."); return; }
-    int orderId = (int) model.getValueAt(r, 0);
-    int newId = manager.reorder(user.getId(), (String) slot.getSelectedItem(), orderId);
-    if (newId > 0) {
-        JOptionPane.showMessageDialog(this,
-                "Reordered! New order #" + newId + " for pickup at " + slot.getSelectedItem());
-        load.run();
-    } else {
-        JOptionPane.showMessageDialog(this, "Could not reorder.");
-    }
-});
+        JComboBox<String> slot = new JComboBox<>(new String[]{
+                "12:00 PM","12:30 PM","1:00 PM","1:30 PM","5:00 PM","5:30 PM"});
 
-JButton reorderLast = UITheme.flatButton("Repeat Last Order", UITheme.ACCENT);  // one-tap last order
-reorderLast.addActionListener(e -> {
-    Order last = manager.getLastOrder(user.getId());
-    if (last == null) { JOptionPane.showMessageDialog(this, "You have no previous orders yet."); return; }
-    int newId = manager.reorder(user.getId(), (String) slot.getSelectedItem(), last.getOrderId());
-    if (newId > 0) {
-        JOptionPane.showMessageDialog(this,
-                "Repeated your last order (#" + last.getOrderId() + ").\n" +
-                "New order #" + newId + " for pickup at " + slot.getSelectedItem());
-        load.run();
-    } else {
-        JOptionPane.showMessageDialog(this, "Could not reorder.");
-    }
-});
+        JButton reorderSel = UITheme.primaryButton("Reorder Selected");
+        reorderSel.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r < 0) { JOptionPane.showMessageDialog(this, "Select an order to repeat."); return; }
+            int orderId = (int) model.getValueAt(r, 0);
+            int newId = manager.reorder(user.getId(), (String) slot.getSelectedItem(), orderId);
+            if (newId > 0) {
+                JOptionPane.showMessageDialog(this,
+                        "Reordered! New order #" + newId + " for pickup at " + slot.getSelectedItem());
+                load.run();
+            } else {
+                JOptionPane.showMessageDialog(this, "Could not reorder.");
+            }
+        });
 
-JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-bar.setBackground(UITheme.BG);
-bar.add(new JLabel("Pickup:"));
-bar.add(slot);
-bar.add(reorderSel);
-bar.add(reorderLast);
-bar.add(refresh);
+        JButton reorderLast = UITheme.flatButton("Repeat Last Order", UITheme.ACCENT);
+        reorderLast.addActionListener(e -> {
+            Order last = manager.getLastOrder(user.getId());
+            if (last == null) { JOptionPane.showMessageDialog(this, "You have no previous orders yet."); return; }
+            int newId = manager.reorder(user.getId(), (String) slot.getSelectedItem(), last.getOrderId());
+            if (newId > 0) {
+                JOptionPane.showMessageDialog(this,
+                        "Repeated your last order (#" + last.getOrderId() + ").\n" +
+                        "New order #" + newId + " for pickup at " + slot.getSelectedItem());
+                load.run();
+            } else {
+                JOptionPane.showMessageDialog(this, "Could not reorder.");
+            }
+        });
+
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        bar.setBackground(UITheme.BG);
+        bar.add(new JLabel("Pickup:"));
+        bar.add(slot);
+        bar.add(reorderSel);
+        bar.add(reorderLast);
+        bar.add(payBtn);
+        bar.add(refresh);
 
         p.add(new JScrollPane(table), BorderLayout.CENTER);
         p.add(bar, BorderLayout.SOUTH);
@@ -440,9 +471,35 @@ bar.add(refresh);
     private void loadOrdersIntoTable(DefaultTableModel model, List<Order> orders) {
         model.setRowCount(0);
         for (Order o : orders) {
+            String pay = o.getPaymentStatus().equals("PAID")
+                    ? "PAID (" + o.getPaymentMethod() + ")" : "UNPAID";
             model.addRow(new Object[]{
                     o.getOrderId(), o.getCustomerName(), itemsSummary(o),
-                    o.getPickupSlot(), o.getStatus(), "Rs." + o.getTotal()});
+                    o.getPickupSlot(), o.getStatus(), "Rs." + o.getTotal(), pay});
+        }
+    }
+
+    /** Simulated payment: pick a method, "process" it, mark the order PAID. */
+    private boolean payNow(int orderId, double amount) {
+        String[] methods = {"UPI", "Card"};
+        String method = (String) JOptionPane.showInputDialog(this,
+                "Order #" + orderId + "\nAmount: Rs." + amount + "\n\nChoose payment method:",
+                "Pay Online", JOptionPane.PLAIN_MESSAGE, null, methods, methods[0]);
+        if (method == null) return false;   // cancelled
+
+        JOptionPane.showMessageDialog(this,
+                "Processing " + method + " payment of Rs." + amount + " ...",
+                "Please wait", JOptionPane.INFORMATION_MESSAGE);
+
+        if (manager.payOrder(orderId, method)) {
+            JOptionPane.showMessageDialog(this,
+                    "Payment successful!\nOrder #" + orderId + " is now PAID via " + method +
+                    ".\nJust pick it up and go.",
+                    "Payment complete", JOptionPane.INFORMATION_MESSAGE);
+            return true;
+        } else {
+            JOptionPane.showMessageDialog(this, "Payment could not be recorded.");
+            return false;
         }
     }
 

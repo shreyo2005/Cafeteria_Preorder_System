@@ -47,12 +47,13 @@ public class DBConnection {
                 "item_id INTEGER PRIMARY KEY AUTOINCREMENT," +
                 "name TEXT NOT NULL, category TEXT NOT NULL," +
                 "price REAL NOT NULL, available INTEGER NOT NULL DEFAULT 1)");
-
-            st.executeUpdate("CREATE TABLE IF NOT EXISTS orders (" +
-                "order_id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "customer_id INTEGER NOT NULL, order_time TEXT NOT NULL," +
-                "pickup_slot TEXT NOT NULL, status TEXT NOT NULL, total REAL NOT NULL," +
-                "FOREIGN KEY (customer_id) REFERENCES users(user_id))");
+st.executeUpdate("CREATE TABLE IF NOT EXISTS orders (" +
+    "order_id INTEGER PRIMARY KEY AUTOINCREMENT," +
+    "customer_id INTEGER NOT NULL, order_time TEXT NOT NULL," +
+    "pickup_slot TEXT NOT NULL, status TEXT NOT NULL, total REAL NOT NULL," +
+    "payment_status TEXT NOT NULL DEFAULT 'UNPAID'," +
+    "payment_method TEXT NOT NULL DEFAULT '-'," +
+    "FOREIGN KEY (customer_id) REFERENCES users(user_id))");
 
             st.executeUpdate("CREATE TABLE IF NOT EXISTS order_items (" +
                 "order_item_id INTEGER PRIMARY KEY AUTOINCREMENT," +

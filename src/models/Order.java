@@ -54,6 +54,15 @@ public class Order {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
+    private String paymentStatus = "UNPAID";   // PAID / UNPAID
+private String paymentMethod = "-";        // UPI / Card / Cash / -
+
+public String getPaymentStatus() { return paymentStatus; }
+public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+
+public String getPaymentMethod() { return paymentMethod; }
+public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
     public List<OrderItem> getItems() { return items; }
     public void setItems(List<OrderItem> items) { this.items = items; }
 }
