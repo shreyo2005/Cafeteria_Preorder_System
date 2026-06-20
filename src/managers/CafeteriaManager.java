@@ -60,18 +60,19 @@ public static class CustomerLogin {
     CustomerLogin(LoginResult r, Customer c) { this.result = r; this.customer = c; }
 }
 
-public CustomerLogin customerLogin(String username, String password) {
+public CustomerLogin customerLogin(String name, String phone, String password) {
     try (Connection c = DBConnection.getConnection()) {
+        // existing customer is identified by phone number
         String find = "SELECT user_id, password, full_name FROM users " +
-                      "WHERE username=? AND role='CUSTOMER'";
+                      "WHERE phone=? AND role='CUSTOMER'";
         try (PreparedStatement ps = c.prepareStatement(find)) {
-            ps.setString(1, username);
+            ps.setString(1, phone);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {                          // existing account -> check password
+                if (rs.next()) {                          // returning customer -> check password
                     String stored = rs.getString("password");
                     if (stored.equals(password)) {
                         return new CustomerLogin(LoginResult.OK,
-                            new Customer(rs.getInt("user_id"), username, password,
+                            new Customer(rs.getInt("user_id"), phone, password,
                                          rs.getString("full_name")));
                     } else {
                         return new CustomerLogin(LoginResult.WRONG_PASSWORD, null);
@@ -79,19 +80,21 @@ public CustomerLogin customerLogin(String username, String password) {
                 }
             }
         }
-        String ins = "INSERT INTO users(username,password,role,full_name) " + // new account -> create
-                     "VALUES(?,?, 'CUSTOMER', ?)";
+        // new customer -> create the account (username stores the phone to stay unique)
+        String ins = "INSERT INTO users(username,phone,password,role,full_name) " +
+                     "VALUES(?,?,?, 'CUSTOMER', ?)";
         try (PreparedStatement ps =
                      c.prepareStatement(ins, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, username);
-            ps.setString(2, password);
-            ps.setString(3, username);
+            ps.setString(1, phone);     // username = phone (guaranteed unique)
+            ps.setString(2, phone);
+            ps.setString(3, password);
+            ps.setString(4, name);      // display name (can repeat)
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 keys.next();
                 int newId = keys.getInt(1);
                 return new CustomerLogin(LoginResult.OK,
-                    new Customer(newId, username, password, username));
+                    new Customer(newId, phone, password, name));
             }
         }
     } catch (SQLException e) {

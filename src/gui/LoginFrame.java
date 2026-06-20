@@ -14,7 +14,7 @@ public class LoginFrame extends JFrame {
 
     public LoginFrame() {
         setTitle("Cafeteria Preorder System - Login");
-        setSize(420, 520);
+        setSize(420, 560);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         getContentPane().setBackground(UITheme.BG);
@@ -38,9 +38,15 @@ public class LoginFrame extends JFrame {
         sub.setForeground(UITheme.MUTED);
         sub.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JTextField userField = new JTextField();
-        userField.setMaximumSize(new Dimension(300, 38));
-        userField.setBorder(BorderFactory.createCompoundBorder(
+        JTextField nameField = new JTextField();      // Name (display label)
+        nameField.setMaximumSize(new Dimension(300, 38));
+        nameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER),
+                new EmptyBorder(6, 10, 6, 10)));
+
+        JTextField phoneField = new JTextField();     // Phone (unique identifier)
+        phoneField.setMaximumSize(new Dimension(300, 38));
+        phoneField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER),
                 new EmptyBorder(6, 10, 6, 10)));
 
@@ -50,18 +56,13 @@ public class LoginFrame extends JFrame {
                 BorderFactory.createLineBorder(UITheme.BORDER),
                 new EmptyBorder(6, 10, 6, 10)));
 
-        JComboBox<String> roleBox=new JComboBox<>(new String[]{"CUSTOMER ,STAFF , ADMIN"});
-        roleBox.setMaximumSize(new Dimension(300,40));
-        roleBox.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-
         JButton loginBtn = UITheme.primaryButton("Login");
         loginBtn.setMaximumSize(new Dimension(300, 44));
         loginBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        //JLabel hint = new JLabel("<html><center>admin/admin123 &nbsp; staff/staff123<br>shreyo/pass123</center></html>");
-        JLabel hint = new JLabel("<html><center>Staff: admin/admin123 &nbsp; staff/staff123<br>"
-        + "Customers: enter a username &amp; password to sign up,<br>then use the same details to log in next time.</center></html>");
+        JLabel hint = new JLabel("<html><center>Staff: type admin/admin123 or staff/staff123 in Name &amp; Password<br>"
+                + "Customers: enter name, phone &amp; password to sign up,<br>"
+                + "then use the same phone &amp; password to log in next time.</center></html>");
         hint.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         hint.setForeground(UITheme.MUTED);
         hint.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -71,63 +72,58 @@ public class LoginFrame extends JFrame {
         root.add(title);
         root.add(Box.createVerticalStrut(4));
         root.add(sub);
-        root.add(Box.createVerticalStrut(28));
-        root.add(label("Username"));
+        root.add(Box.createVerticalStrut(24));
+        root.add(label("Name"));
         root.add(Box.createVerticalStrut(4));
-        root.add(userField);
-        root.add(Box.createVerticalStrut(16));
+        root.add(nameField);
+        root.add(Box.createVerticalStrut(14));
+        root.add(label("Phone"));
+        root.add(Box.createVerticalStrut(4));
+        root.add(phoneField);
+        root.add(Box.createVerticalStrut(14));
         root.add(label("Password"));
         root.add(Box.createVerticalStrut(4));
         root.add(passField);
-        root.add(Box.createVerticalStrut(24));
+        root.add(Box.createVerticalStrut(22));
         root.add(loginBtn);
-        root.add(Box.createVerticalStrut(20));
+        root.add(Box.createVerticalStrut(18));
         root.add(hint);
-        root.add(Box.createVerticalStrut(16));
-root.add(label("Role"));
-root.add(Box.createVerticalStrut(4));
-root.add(roleBox);
 
         add(root);
 
-        // Runnable doLogin = () -> {
-        //     String u = userField.getText().trim();
-        //     String p = new String(passField.getPassword());
-        //     if (u.isEmpty() || p.isEmpty()) {
-        //         JOptionPane.showMessageDialog(this, "Enter username and password.");
-        //         return;
-        //     }
+        Runnable doLogin = () -> {
+            String name  = nameField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String p     = new String(passField.getPassword());
 
-
-Runnable doLogin = () -> {
-            String u = userField.getText().trim();
-            String p = new String(passField.getPassword());
-            if (u.isEmpty() || p.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Enter username and password.");
-                return;
-            }
-
-            Person staff = manager.staffLogin(u, p);               // 1) admin/staff seeded check
+            // 1) Admin / staff: type their name in the Name box (no phone needed)
+            Person staff = manager.staffLogin(name, p);
             if (staff != null) {
                 dispose();
                 new MainFrame(staff).setVisible(true);
                 return;
             }
 
-            if (u.equals("admin") || u.equals("staff")) {          // 2) seeded name, wrong password
-                JOptionPane.showMessageDialog(this, "Wrong password for " + u + ".",
+            // 2) Seeded name with wrong password
+            if (name.equals("admin") || name.equals("staff")) {
+                JOptionPane.showMessageDialog(this, "Wrong password for " + name + ".",
                         "Login failed", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            CafeteriaManager.CustomerLogin cl = manager.customerLogin(u, p);  // 3) customer auto-create / check
+            // 3) Customer: needs name, phone, and password
+            if (name.isEmpty() || phone.isEmpty() || p.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Enter your name, phone, and password.");
+                return;
+            }
+
+            CafeteriaManager.CustomerLogin cl = manager.customerLogin(name, phone, p);
             if (cl.result == CafeteriaManager.LoginResult.OK) {
                 dispose();
                 new MainFrame(cl.customer).setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(this,
-                        "That username already exists and the password is incorrect.\n" +
-                        "Try again, or use a different username to create a new account.",
+                        "This phone number is already registered and the password is incorrect.",
                         "Login failed", JOptionPane.ERROR_MESSAGE);
             }
         };

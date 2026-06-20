@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     username  TEXT NOT NULL UNIQUE,
     password  TEXT NOT NULL,
     role      TEXT NOT NULL,
-    full_name TEXT NOT NULL
+    full_name TEXT NOT NULL,
+    phone TEXT
 );
 
 CREATE TABLE IF NOT EXISTS menu_items (

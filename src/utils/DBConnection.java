@@ -40,7 +40,7 @@ public class DBConnection {
 
             st.executeUpdate("CREATE TABLE IF NOT EXISTS users (" +
                 "user_id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "username TEXT NOT NULL UNIQUE, password TEXT NOT NULL," +
+                "username TEXT NOT NULL UNIQUE, phone TEXT NOT NULL, password TEXT NOT NULL," +
                 "role TEXT NOT NULL, full_name TEXT NOT NULL)");
 
             st.executeUpdate("CREATE TABLE IF NOT EXISTS menu_items (" +
@@ -68,11 +68,9 @@ public class DBConnection {
                 empty = rs.getInt(1) == 0;
             }
             if (empty) {
-                st.executeUpdate("INSERT INTO users(username,password,role,full_name) VALUES" +
-                    "('admin','admin123','ADMIN','System Administrator')," +
-                    "('staff','staff123','STAFF','Kitchen Staff')," +
-                    "('shreyo','pass123','CUSTOMER','Shreyo')," +
-                    "('rohit','pass123','CUSTOMER','Rohit Maiya')");
+st.executeUpdate("INSERT INTO users(username,phone,password,role,full_name) VALUES" +
+    "('admin','','admin123','ADMIN','System Administrator')," +
+    "('staff','','staff123','STAFF','Kitchen Staff')");
 
                 st.executeUpdate("INSERT INTO menu_items(name,category,price,available) VALUES" +
                     "('Masala Dosa','Breakfast',60.0,1)," +
